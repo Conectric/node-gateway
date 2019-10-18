@@ -1,0 +1,11 @@
+{
+    "apiUrl": "https://URL_HERE",
+    "requestTimeout": 2,
+    "readingInterval": 30,
+    "useMillisecondTimestamps": true,
+    "useFahrenheitTemps": true,
+    "sendStatusMessages": true,
+    "sendEventCount": true,
+    "sendRawData": true,
+    "sendHopData": true
+}

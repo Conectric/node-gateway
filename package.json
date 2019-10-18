@@ -1,0 +1,28 @@
+{
+  "name": "node-gateway",
+  "version": "0.0.1",
+  "description": "Conectric Mesh Gateway for Node.js",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [
+    "mesh",
+    "iot",
+    "iotgateway",
+    "conectric"
+  ],
+  "author": "Conectric Networks",
+  "license": "MIT",
+  "engines": {
+    "node": ">=8.9.4"
+  },
+  "dependencies": {
+    "@hapi/joi": "^15.1.0",
+    "conectric-usb-gateway-beta": "^0.0.11",
+    "moment": "^2.24.0",
+    "request": "^2.88.0",
+    "round-to": "^4.0.0"
+  }
+}

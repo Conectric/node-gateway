@@ -1,0 +1,11 @@
+{
+    "meters": [
+        {
+            "serialNumber": "000300002932",
+            "rs485HubId": "22fb",
+            "version": 4,
+            "password": "00000000",
+            "ctRatio": 200
+        }
+    ]
+}
