@@ -71,7 +71,7 @@ const verifyMeterMappings = () => {
     meters: Joi.array().items(Joi.object().keys({
       serialNumber: Joi.string().length(12).required(),
       rs485HubId: Joi.string().length(4).required(),
-      version: Joi.number().integer().min(4).max(4).required(),
+      version: Joi.number().integer().min(3).max(4).required(),
       password: Joi.string().length(8).regex(/[0-9]{8}/).optional(),
       ctRatio: Joi.number().integer().min(100).max(5000).optional()
     }).optional())
@@ -107,24 +107,36 @@ const sendToAPI = (message) => {
   console.log(uri)
   console.log(reformattedPayload)
 
-  request({
-    method: 'POST',
+  const requestConfig = {
+    method: clientImpl.getAPIVerb(),
     uri,
     json: true,
     body: reformattedPayload
-  }, (err, res, body) => {
-    if (err) {
-      console.error('Error posting to API:')
-      console.error(err)
-    } else {
-      if (res.statusCode === 200) {
-        console.log('Sent message successfully.')
+  }
+
+  // Add in any custom headers.
+  const requestHeaders = clientImpl.buildAPIHeaders(config, reformattedPayload)
+
+  if (Object.keys(requestHeaders).length > 0) {
+    requestConfig.headers = requestHeaders
+  }
+
+  request(
+    requestConfig,
+    (err, res, body) => {
+      if (err) {
+        console.error('Error sending to API:')
+        console.error(err)
       } else {
-        console.error(`Error posting to API, statusCode: ${res.statusCode}`)
-        console.error(res.body)
+        if (res.statusCode === 200) {
+          console.log('Sent message successfully.')
+        } else {
+          console.error(`Error sending to API, statusCode: ${res.statusCode}`)
+          console.error(res.body)
+        }
       }
     }
-  })
+  )
 }
 
 const clearMeterReadingInterval = () => {
@@ -137,10 +149,19 @@ const randomTrackingId = () => {
 }
 
 const sendMeterRequest = (meterSerialNumberHex, destination) => {
+  const meter = getCurrentMeter()
   let genTrackingId = randomTrackingId()
+  let message
+
+  if (meter.version === 3) {
+    message = `2F3F${meterSerialNumberHex}210D0A`
+  } else {
+    // v4 meter.
+    message = `2F3F${meterSerialNumberHex}303${ekmData.currentMessageType === 'A' ? 0 : 1}210D0A`
+  }
 
   gateway.sendRS485Request({
-    message: `2F3F${meterSerialNumberHex}303${ekmData.currentMessageType === 'A' ? 0 : 1}210D0A`,
+    message,
     destination,
     hexEncodePayload: false,
     trackingId: `${genTrackingId}`
@@ -149,7 +170,11 @@ const sendMeterRequest = (meterSerialNumberHex, destination) => {
   // Set the expected tracking ID for when the reply comes back.
   expectedTrackingId = genTrackingId
 
-  console.log(`Sent request for ${ekmData.currentMessageType} message to ${meterSerialNumberHex} with tracking ID:${genTrackingId}.`)
+  if (meter.version === 3) {
+    console.log(`Sent request to ${meterSerialNumberHex} with tracking ID:${genTrackingId}.`)    
+  } else {
+    console.log(`Sent request for ${ekmData.currentMessageType} message to ${meterSerialNumberHex} with tracking ID:${genTrackingId}.`)
+  }
 
   clearMeterReadingInterval()
 
@@ -204,7 +229,7 @@ const onSensorMessage = sensorMessage => {
   }
 
   // Ignore sensor messages...
-  //if (sensorMessage.type !== 'rs485ChunkEnvelopeResponse' && sensorMessage.type !== 'rs485ChunkResponse') { return }
+  // if (sensorMessage.type !== 'rs485ChunkEnvelopeResponse' && sensorMessage.type !== 'rs485ChunkResponse') { return }
 
   if (isMeterReadingMessage && sensorMessage.hasOwnProperty('trackingId')) {
     // This is a meter reading message with a tracking ID, check to see
@@ -219,6 +244,8 @@ const onSensorMessage = sensorMessage => {
 
   try {
     if (sensorMessage.type === 'rs485ChunkEnvelopeResponse') {
+      const meter = getCurrentMeter()
+
       if (ekmData.currentMessageType === 'A') {
         ekmData.dataChunksA = []
         ekmData.dataChunksB = []
@@ -236,11 +263,17 @@ const onSensorMessage = sensorMessage => {
         trackingId: `${genTrackingId}`
       })
 
-      console.log(`Sent request for message ${ekmData.currentMessageType} chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+      if (meter.version === 3) {
+        console.log(`Sent request for chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+      } else {
+        console.log(`Sent request for message ${ekmData.currentMessageType} chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+      }
 
       // Set the expected tracking ID for when the reply comes back.
       expectedTrackingId = genTrackingId
     } else if (sensorMessage.type === 'rs485ChunkResponse') {
+      const meter = getCurrentMeter()
+
       if (ekmData.chunkToRequest < (ekmData.numChunks - 1)) {
         if (ekmData.currentMessageType === 'A') {
           ekmData.dataChunksA.push(sensorMessage.payload.data)
@@ -262,7 +295,11 @@ const onSensorMessage = sensorMessage => {
           trackingId: `${genTrackingId}`
         })
 
-        console.log(`Sent request for message ${ekmData.currentMessageType} chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+        if (meter.version === 3) {
+          console.log(`Sent request for chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+        } else {
+          console.log(`Sent request for message ${ekmData.currentMessageType} chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+        }
 
         // Set the expected tracking ID for when the reply comes back.
         expectedTrackingId = genTrackingId
@@ -284,14 +321,29 @@ const onSensorMessage = sensorMessage => {
         if (ekmData.currentMessageType === 'A') {
           // Check CRC on A message
           if (! ekmdecoder.crcCheck(ekmData.dataChunksA.join(''))) {
-            console.log('Meter message A CRC check failed, skipping this meter for now.');
+            console.log(`Meter message ${meter.version === 4 ? 'A' : ''} CRC check failed, skipping this meter for now.`);
             startNextMeterRequest()
           } else {
-            console.log('Meter message A CRC check passed.')
-            // Send EKM v4 meter message type B
-            ekmData.currentMessageType = 'B'
-            const meter = getCurrentMeter()     
-            sendMeterRequest(meter.hexSerialNumber, meter.rs485HubId)
+            console.log(`Meter message ${meter.version === 4 ? 'B' : ''} CRC check passed.`)
+
+            if (meter.version === 3) {
+              // All done here for a v3 meter.
+              sendToAPI({
+                type: 'meter',
+                timestamp: sensorMessage.timestamp,
+                battery: sensorMessage.payload.battery,
+                sensorId: sensorMessage.sensorId,
+                sequenceNumber: sensorMessage.sequenceNumber,
+                ...ekmdecoder.decodeV3Message(ekmData.dataChunksA.join(''))
+              })
+      
+              // Set off the reading process again.
+              startNextMeterRequest()
+            } else {
+              // Send EKM v4 meter message type B
+              ekmData.currentMessageType = 'B'
+              sendMeterRequest(meter.hexSerialNumber, meter.rs485HubId)
+            }
           }
         } else {
           if (! ekmdecoder.crcCheck(ekmData.dataChunksB.join(''))) {

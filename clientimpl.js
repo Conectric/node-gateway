@@ -17,7 +17,32 @@ const buildAPIURL = (config, payload) => {
   return config.apiUrl
 }
 
+const buildAPIHeaders = (config, payload) => {
+  // Returns an object describing HTTP headers to be 
+  // added when calling the API URL returned by 
+  // buildAPIURL.  If none are required, simply return 
+  // an empty object.  Has access to the config.json 
+  // file through 'config', and the results of calling 
+  // formatPayload on the message payload through 'payload'.
+
+  // Example:
+  // { 'x-some-header-name': 'secretpassword' }
+
+  return {
+    'x-some-secret-header': config.apiToken
+  }
+}
+
+const getAPIVerb = () => {
+  // Should return 'POST' or 'PUT'.  This is the HTTP
+  // verb that will be used when calling the API.
+
+  return 'POST'
+}
+
 module.exports = {
   formatPayload,
-  buildAPIURL
+  buildAPIURL,
+  buildAPIHeaders,
+  getAPIVerb
 }

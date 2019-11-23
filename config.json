@@ -1,5 +1,6 @@
 {
     "apiUrl": "https://URL_HERE",
+    "apiToken": "test",
     "requestTimeout": 2,
     "readingInterval": 30,
     "useMillisecondTimestamps": true,
