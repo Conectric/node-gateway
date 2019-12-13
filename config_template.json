@@ -1,7 +1,8 @@
 {
     "apiUrl": "https://URL_HERE",
     "requestTimeout": 2,
-    "readingInterval": 30,
+    "maxRetries": 3,
+    "readingInterval": 300,
     "useMillisecondTimestamps": true,
     "useFahrenheitTemps": true,
     "sendStatusMessages": true,

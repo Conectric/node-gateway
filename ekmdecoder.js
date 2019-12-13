@@ -31,7 +31,7 @@ const ekmdecoder = {
     { fieldName: 'max_demand',        startPos: 326, endPos: 341, decode: true,     decimalPlaces: 1, isNumeric: true },
     { fieldName: 'max_demand_period', startPos: 342, endPos: 343, decode: true,                       isNumeric: true },
     { fieldName: 'meter_time',        startPos: 344, endPos: 371, decode: true,                                       },
-    { fieldName: 'ct_ratio',          startPos: 372, endPos: 379, decode: true                                        },
+    { fieldName: 'ct_ratio',          startPos: 372, endPos: 379, decode: true,                       isNumeric: true },
     { fieldName: 'pulse_cnt_1',       startPos: 380, endPos: 395, decode: true,                       isNumeric: true },
     { fieldName: 'pulse_cnt_2',       startPos: 396, endPos: 411, decode: true,                       isNumeric: true },
     { fieldName: 'pulse_cnt_3',       startPos: 412, endPos: 427, decode: true,                       isNumeric: true },

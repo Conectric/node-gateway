@@ -8,16 +8,20 @@ const clientImpl = require('./clientimpl')
 let ekmData = {
   dataChunksA: [],
   dataChunksB: []
-};
+}
 
 let config
 let meterReadingInterval
+let chunkReadingInterval
 let currentMeter = 0
 let meterMappings
 let metersEnabled = false
 let expectedTrackingId
+let retryCount = 0
 
 const moveToNextMeter = () => {
+  retryCount = 0
+
   if (currentMeter === meterMappings.meters.length - 1) {
     currentMeter = 0
   } else {
@@ -33,6 +37,7 @@ const verifyConfig = () => {
   const validationResult = Joi.validate(config, Joi.object().keys({
     apiUrl: Joi.string().uri(),
     requestTimeout: Joi.number().integer().min(1).required(),
+    maxRetries: Joi.number().integer().min(0).required(),
     readingInterval: Joi.number().integer().min(1).required(),
     useMillisecondTimestamps: Joi.boolean().required(),
     useFahrenheitTemps: Joi.boolean().required(),
@@ -140,8 +145,55 @@ const sendToAPI = (message) => {
 }
 
 const clearMeterReadingInterval = () => {
-  clearTimeout(meterReadingInterval);
+  clearTimeout(meterReadingInterval)
   meterReadingInterval = undefined
+}
+
+const setChunkReadingInterval = () => {
+  chunkReadingInterval = setTimeout(() => {
+    chunkReadingInterval = undefined
+
+    if (retryCount < config.maxRetries) {
+      retryCount++
+
+      const genTrackingId = randomTrackingId()
+      const meter = getCurrentMeter()
+
+      gateway.sendRS485ChunkRequest({
+        chunkNumber: ekmData.chunkToRequest,
+        chunkSize: ekmData.chunkSize,
+        destination: meter.rs485HubId,
+        trackingId: `${genTrackingId}`
+      })
+
+      setChunkReadingInterval()
+
+      if (meter.version === 3) {
+        console.log(`Sent retry request (${retryCount}) for chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+      } else {
+        console.log(`Sent retry request (${retryCount}) for message ${ekmData.currentMessageType} chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
+      }
+
+      // Set the expected tracking ID for when the reply comes back.
+      expectedTrackingId = genTrackingId
+    } else {
+      clientImpl.onMeterReadFail(meter.serialNumber)
+      console.log('Starting a new reading request.')
+      retryCount = 0
+      ekmData.currentMessageType = 'A'
+      ekmData.dataChunksA = []
+      ekmData.dataChunksB = []
+  
+      moveToNextMeter()
+      const meter = getCurrentMeter()
+      sendMeterRequest(meter.hexSerialNumber, meter.rs485HubId)  
+    }
+  }, config.requestTimeout)
+}
+
+const clearChunkReadingInterval = () => {
+  clearTimeout(chunkReadingInterval)
+  chunkReadingInterval = undefined
 }
 
 const randomTrackingId = () => {
@@ -182,6 +234,7 @@ const sendMeterRequest = (meterSerialNumberHex, destination) => {
     meterReadingInterval = undefined
 
     console.log('Starting a new reading request.')
+    retryCount = 0
     ekmData.currentMessageType = 'A'
     ekmData.dataChunksA = []
     ekmData.dataChunksB = []
@@ -195,6 +248,7 @@ const sendMeterRequest = (meterSerialNumberHex, destination) => {
 const startNextMeterRequest = () => {
   setTimeout(() => {
     console.log('Starting a new reading request.')
+    retryCount = 0
     ekmData.currentMessageType = 'A'
     ekmData.dataChunksA = []
     ekmData.dataChunksB = []
@@ -229,7 +283,7 @@ const onSensorMessage = sensorMessage => {
   }
 
   // Ignore sensor messages...
-  // if (sensorMessage.type !== 'rs485ChunkEnvelopeResponse' && sensorMessage.type !== 'rs485ChunkResponse') { return }
+  //if (sensorMessage.type !== 'rs485ChunkEnvelopeResponse' && sensorMessage.type !== 'rs485ChunkResponse') { return }
 
   if (isMeterReadingMessage && sensorMessage.hasOwnProperty('trackingId')) {
     // This is a meter reading message with a tracking ID, check to see
@@ -244,6 +298,8 @@ const onSensorMessage = sensorMessage => {
 
   try {
     if (sensorMessage.type === 'rs485ChunkEnvelopeResponse') {
+      // Stop the timeout.
+      clearMeterReadingInterval()
       const meter = getCurrentMeter()
 
       if (ekmData.currentMessageType === 'A') {
@@ -263,6 +319,8 @@ const onSensorMessage = sensorMessage => {
         trackingId: `${genTrackingId}`
       })
 
+      setChunkReadingInterval()
+
       if (meter.version === 3) {
         console.log(`Sent request for chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
       } else {
@@ -272,15 +330,16 @@ const onSensorMessage = sensorMessage => {
       // Set the expected tracking ID for when the reply comes back.
       expectedTrackingId = genTrackingId
     } else if (sensorMessage.type === 'rs485ChunkResponse') {
+      // Stop the timeout.
+      clearChunkReadingInterval()
+
       const meter = getCurrentMeter()
 
       if (ekmData.chunkToRequest < (ekmData.numChunks - 1)) {
         if (ekmData.currentMessageType === 'A') {
           ekmData.dataChunksA.push(sensorMessage.payload.data)
-	        console.log(`dataChunksA: ${ekmData.dataChunksA.length}`)
         } else {
           ekmData.dataChunksB.push(sensorMessage.payload.data)
-	        console.log(`dataChunksB: ${ekmData.dataChunksB.length}`)
         }
 
         console.log(`Received chunk ${ekmData.chunkToRequest}`)
@@ -294,6 +353,8 @@ const onSensorMessage = sensorMessage => {
           destination: sensorMessage.sensorId,
           trackingId: `${genTrackingId}`
         })
+
+        setChunkReadingInterval()
 
         if (meter.version === 3) {
           console.log(`Sent request for chunk ${ekmData.chunkToRequest} with tracking ID:${genTrackingId}.`)
@@ -309,32 +370,30 @@ const onSensorMessage = sensorMessage => {
         // Drop the last byte from the final chunk.
         if (ekmData.currentMessageType === 'A') {
           ekmData.dataChunksA.push(sensorMessage.payload.data.substring(0, sensorMessage.payload.data.length - 2))
-	        console.log(`dataChunksA: ${ekmData.dataChunksA.length}`)
         } else {
           ekmData.dataChunksB.push(sensorMessage.payload.data.substring(0, sensorMessage.payload.data.length - 2))
-	        console.log(`dataChunksB: ${ekmData.dataChunksB.length}`)
         }
-        
-        // Stop the timeout.
-        clearMeterReadingInterval()
-
+    
         if (ekmData.currentMessageType === 'A') {
           // Check CRC on A message
           if (! ekmdecoder.crcCheck(ekmData.dataChunksA.join(''))) {
-            console.log(`Meter message ${meter.version === 4 ? 'A' : ''} CRC check failed, skipping this meter for now.`);
+            console.log(`Meter message ${meter.version === 4 ? 'A' : ''} CRC check failed, skipping this meter for now.`)
             startNextMeterRequest()
           } else {
-            console.log(`Meter message ${meter.version === 4 ? 'B' : ''} CRC check passed.`)
+            console.log(`Meter message ${meter.version === 4 ? 'A' : ''} CRC check passed.`)
 
             if (meter.version === 3) {
               // All done here for a v3 meter.
               sendToAPI({
                 type: 'meter',
+                meterModel: 'ekm3',
                 timestamp: sensorMessage.timestamp,
-                battery: sensorMessage.payload.battery,
                 sensorId: sensorMessage.sensorId,
                 sequenceNumber: sensorMessage.sequenceNumber,
-                ...ekmdecoder.decodeV3Message(ekmData.dataChunksA.join(''))
+                payload: {
+                  battery: sensorMessage.payload.battery,
+                  ...ekmdecoder.decodeV3Message(ekmData.dataChunksA.join(''))
+                }
               })
       
               // Set off the reading process again.
@@ -347,18 +406,21 @@ const onSensorMessage = sensorMessage => {
           }
         } else {
           if (! ekmdecoder.crcCheck(ekmData.dataChunksB.join(''))) {
-            console.log('Meter message B CRC check failed, skipping this meter for now.');
+            console.log('Meter message B CRC check failed, skipping this meter for now.')
             startNextMeterRequest()
           } else {
             console.log('Meter message B CRC check passed.')
             // We now have the complete meter reading.
             sendToAPI({
               type: 'meter',
+              meterModel: 'ekm4',
               timestamp: sensorMessage.timestamp,
-              battery: sensorMessage.payload.battery,
               sensorId: sensorMessage.sensorId,
               sequenceNumber: sensorMessage.sequenceNumber,
-              ...ekmdecoder.decodeV4Message(ekmData.dataChunksA.join(''), ekmData.dataChunksB.join(''))
+              payload: {
+                battery: sensorMessage.payload.battery,
+                ...ekmdecoder.decodeV4Message(ekmData.dataChunksA.join(''), ekmData.dataChunksB.join(''))
+              }
             })
     
             // Set off the reading process again.

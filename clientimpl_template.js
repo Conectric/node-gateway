@@ -38,9 +38,18 @@ const getAPIVerb = () => {
   return 'POST'
 }
 
+const onMeterReadFail = (meterSerialNumber) => {
+  // Called whenever a meter reading fails due to a 
+  // message not being received after the configurable
+  // number of retries has been reached.
+
+  console.log(`Meter reading failed for meter ${meterSerialNumber}`)
+}
+
 module.exports = {
   formatPayload,
   buildAPIURL,
   buildAPIHeaders,
-  getAPIVerb
+  getAPIVerb,
+  onMeterReadFail
 }
