@@ -14,7 +14,7 @@ const buildAPIURL = (config, payload) => {
   // through 'payload'.  This can access any value in config.json
   // as config.<name>.  To see what's in payload, simply 
   // console.log it here.
-  return config.apiUrl
+  return config.http.apiUrl
 }
 
 const buildAPIHeaders = (config, payload) => {

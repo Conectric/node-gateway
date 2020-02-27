@@ -1,5 +1,13 @@
 {
-    "apiUrl": "https://URL_HERE",
+    "http": {
+        "apiUrl": "https://URL_HERE",
+        "enabled": true
+    },
+    "go-iot": {
+        "id": "DINGO-Conectric-Unix-Socket-Client",
+        "socketRoot": "/dev/shm/",
+        "enabled": false
+    },
     "requestTimeout": 2,
     "maxRetries": 3,
     "readingInterval": 300,

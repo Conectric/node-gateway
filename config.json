@@ -1,6 +1,12 @@
 {
-    "apiUrl": "https://URL_HERE",
-    "apiToken": "test",
+    "http": {
+        "apiUrl": "https://URL_HERE",
+        "apiToken": "test",
+        "enabled": true
+    },
+    "go-iot": {
+        "enabled": false
+    },
     "requestTimeout": 2,
     "maxRetries": 3,
     "readingInterval": 300,

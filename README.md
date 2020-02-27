@@ -1,6 +1,6 @@
 # Conectric Gateway for Node.js
 
-Gateway code to receive sensor and EKM meter readings from the Conectric mesh network and forward it to a HTTP POST API.
+Gateway code to receive sensor and EKM meter readings from the Conectric mesh network and forward it to a HTTP POST API and optionally to the Go-IoT BACNET service if configured on your gateway.
 
 Message formats to send to the API, and the format of the API URL used are configured in a file called `clientimpl.js`, described in the "Setup" section.
 
@@ -34,7 +34,13 @@ Contains configurable parameters.
 
 ```
 {
-    "apiUrl": "<API URL to post data to> e.g. https://mydomain.com/api/endpoint",
+    "http": {
+        "apiUrl": "<API URL to post data to> e.g. https://mydomain.com/api/endpoint",
+        "enabled": true
+    },
+    "go-iot": {
+        "enabled": false
+    },
     "requestTimeout": <Seconds that a request for a chunk of meter data can run for before being considered timed out, min 1>,
     "maxRetries": <Number of times to retry a request for a chunk of meter data that timed out, min 0>
     "readingInterval": <Seconds between successfully reading a meter and starting the next read, min 1>,
@@ -47,7 +53,7 @@ Contains configurable parameters.
 }
 ```
 
-You may also add your own extra parameters in, which can be referenced in your customized `clientimpl.js` file.
+You may also add your own extra parameters to the config file.  These can then be referenced in your customized `clientimpl.js` file.
 
 ## meters.json
 
@@ -58,7 +64,7 @@ Contains an array of EKM v3 or v4 meters to be read, and information about which
     "meters": [
         {
             "serialNumber": "000300004299",
-            "rs485HubID": "0000",
+            "rs485HubId": "0000",
             "version": 4,
             "password": "00000000",
             "ctRatio": 100

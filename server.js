@@ -1,5 +1,4 @@
 const gateway = require('conectric-usb-gateway-beta')
-const moment = require('moment')
 const request = require('request')
 const Joi = require('@hapi/joi')
 const ekmdecoder = require('./ekmdecoder')
@@ -10,6 +9,7 @@ let ekmData = {
   dataChunksB: []
 }
 
+let goiot
 let config
 let meterReadingInterval
 let chunkReadingInterval
@@ -35,7 +35,17 @@ const getCurrentMeter = () => {
 
 const verifyConfig = () => {
   const validationResult = Joi.validate(config, Joi.object().keys({
-    apiUrl: Joi.string().uri(),
+    http: Joi.object().keys({
+      apiUrl: Joi.string().uri().required(),
+      enabled: Joi.boolean().required()
+    }).optional().options({
+      allowUnknown: true
+    }),
+    'go-iot': Joi.object().keys({
+      enabled: Joi.boolean().required()
+    }).optional().options({
+      allowUnknown: true
+    }), 
     requestTimeout: Joi.number().integer().min(1).required(),
     maxRetries: Joi.number().integer().min(0).required(),
     readingInterval: Joi.number().integer().min(1).required(),
@@ -60,6 +70,8 @@ const verifyConfig = () => {
   config.requestTimeout = config.requestTimeout * 1000
   config.readingInterval = config.readingInterval * 1000
 }
+
+const isEndpointEnabled = endpointName => config[endpointName] && config[endpointName].enabled
 
 const encodeMeterSerialNumber = serialNumber => {
   let encodedMeterSerialNumber = ''
@@ -101,26 +113,44 @@ const verifyMeterMappings = () => {
   }
 }
 
-const sendToAPI = (message) => {
+const sendToEndpoints = (message) => {
+  // TODO change this to send to both options if configured...
+  // And avoid HTTP option if disabled...
   const reformattedPayload = clientImpl.formatPayload({
     gatewayId: gateway.macAddress,
     ...message
   })
 
-  const uri = clientImpl.buildAPIURL(config, reformattedPayload)
+  if (httpEnabled) {
+    sendToHTTPEndpoint(reformattedPayload)
+  }
+
+  if (goIotEnabled) {
+    try {
+      goiot.sendToUnixSocket(reformattedPayload);
+      console.log('Sent message to go-iot.')
+    } catch (err) {
+      console.log('Error sending to go-iot:')
+      console.log(err)
+    }
+  }
+}
+
+const sendToHTTPEndpoint = (message) => {
+  const uri = clientImpl.buildAPIURL(config, message)
 
   console.log(uri)
-  console.log(reformattedPayload)
+  console.log(message)
 
   const requestConfig = {
     method: clientImpl.getAPIVerb(),
     uri,
     json: true,
-    body: reformattedPayload
+    body: message
   }
 
   // Add in any custom headers.
-  const requestHeaders = clientImpl.buildAPIHeaders(config, reformattedPayload)
+  const requestHeaders = clientImpl.buildAPIHeaders(config, message)
 
   if (Object.keys(requestHeaders).length > 0) {
     requestConfig.headers = requestHeaders
@@ -177,6 +207,7 @@ const setChunkReadingInterval = () => {
       // Set the expected tracking ID for when the reply comes back.
       expectedTrackingId = genTrackingId
     } else {
+      let meter = getCurrentMeter()
       clientImpl.onMeterReadFail(meter.serialNumber)
       console.log('Starting a new reading request.')
       retryCount = 0
@@ -185,7 +216,7 @@ const setChunkReadingInterval = () => {
       ekmData.dataChunksB = []
   
       moveToNextMeter()
-      const meter = getCurrentMeter()
+      meter = getCurrentMeter()
       sendMeterRequest(meter.hexSerialNumber, meter.rs485HubId)  
     }
   }, config.requestTimeout)
@@ -260,6 +291,11 @@ const startNextMeterRequest = () => {
 
 const onGatewayReady = () => {
   console.log('Gateway is ready to send messages.')
+
+  if (goIotEnabled) {
+    goiot = require('@goiot/goiot')
+  }
+
   ekmData.currentMessageType = 'A'
 
   if (metersEnabled) {
@@ -384,7 +420,7 @@ const onSensorMessage = sensorMessage => {
 
             if (meter.version === 3) {
               // All done here for a v3 meter.
-              sendToAPI({
+              sendToEndpoints({
                 type: 'meter',
                 meterModel: 'ekm3',
                 timestamp: sensorMessage.timestamp,
@@ -411,7 +447,7 @@ const onSensorMessage = sensorMessage => {
           } else {
             console.log('Meter message B CRC check passed.')
             // We now have the complete meter reading.
-            sendToAPI({
+            sendToEndpoints({
               type: 'meter',
               meterModel: 'ekm4',
               timestamp: sensorMessage.timestamp,
@@ -430,7 +466,7 @@ const onSensorMessage = sensorMessage => {
       }
     } else {
       // This is a normal message.
-      sendToAPI(sensorMessage)
+      sendToEndpoints(sensorMessage)
     }
   } catch (err) {
     console.error('Error occurred sending message to API:')
@@ -459,6 +495,13 @@ try {
 
 // Verify meters file.
 verifyMeterMappings()
+
+// Which endpoints are enabled?
+const httpEnabled = isEndpointEnabled('http')
+const goIotEnabled = isEndpointEnabled('go-iot')
+
+console.log(`HTTP is ${httpEnabled ? 'enabled' : 'disabled'}.`)
+console.log(`go-iot is ${goIotEnabled ? 'enabled' : 'disabled'}.`)
 
 gateway.runGateway({
   onSensorMessage,
