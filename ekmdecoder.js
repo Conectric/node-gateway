@@ -25,9 +25,9 @@ const ekmdecoder = {
     { fieldName: 'rms_watts_ln_2',    startPos: 260, endPos: 273, decode: true,                       isNumeric: true },
     { fieldName: 'rms_watts_ln_3',    startPos: 274, endPos: 287, decode: true,                       isNumeric: true },
     { fieldName: 'rms_watts_tot',     startPos: 288, endPos: 301, decode: true,                       isNumeric: true },
-    { fieldName: 'cos_theta_ln_1',    startPos: 302, endPos: 309, decode: true,     decimalPlaces: 2                  },
-    { fieldName: 'cos_theta_ln_2',    startPos: 310, endPos: 317, decode: true,     decimalPlaces: 2                  },
-    { fieldName: 'cos_theta_ln_3',    startPos: 318, endPos: 325, decode: true,     decimalPlaces: 2                  },
+    { fieldName: 'cos_theta_ln_1',    startPos: 304, endPos: 309, decode: true,     decimalPlaces: 2, isNumeric: true },
+    { fieldName: 'cos_theta_ln_2',    startPos: 312, endPos: 317, decode: true,     decimalPlaces: 2, isNumeric: true },
+    { fieldName: 'cos_theta_ln_3',    startPos: 320, endPos: 325, decode: true,     decimalPlaces: 2, isNumeric: true },
     { fieldName: 'max_demand',        startPos: 326, endPos: 341, decode: true,     decimalPlaces: 1, isNumeric: true },
     { fieldName: 'max_demand_period', startPos: 342, endPos: 343, decode: true,                       isNumeric: true },
     { fieldName: 'meter_time',        startPos: 344, endPos: 371, decode: true,                                       },
@@ -52,9 +52,9 @@ const ekmdecoder = {
     { fieldName: 'kwh_tot',                startPos:  32, endPos:  47, decode: true, decimalPlaces: -1, isNumeric: true },
     { fieldName: 'reactive_energy_tot',    startPos:  48, endPos:  63, decode: true, decimalPlaces: -1, isNumeric: true },
     { fieldName: 'rev_kwh_tot',            startPos:  64, endPos:  79, decode: true, decimalPlaces: -1, isNumeric: true },
-    { fieldName: 'kwh_tariff_1',           startPos:  80, endPos:  95, decode: true, decimalPlaces: -1, isNumeric: true },
-    { fieldName: 'kwh_tariff_2',           startPos:  96, endPos: 111, decode: true, decimalPlaces: -1, isNumeric: true },
-    { fieldName: 'kwh_tariff_3',           startPos: 112, endPos: 127, decode: true, decimalPlaces: -1, isNumeric: true },
+    { fieldName: 'kwh_ln_1',               startPos:  80, endPos:  95, decode: true, decimalPlaces: -1, isNumeric: true },
+    { fieldName: 'kwh_ln_2',               startPos:  96, endPos: 111, decode: true, decimalPlaces: -1, isNumeric: true },
+    { fieldName: 'kwh_ln_3',               startPos: 112, endPos: 127, decode: true, decimalPlaces: -1, isNumeric: true },
     { fieldName: 'rev_kwh_ln_1',           startPos: 128, endPos: 143, decode: true, decimalPlaces: -1, isNumeric: true }, 
     { fieldName: 'rev_kwh_ln_2',           startPos: 144, endPos: 159, decode: true, decimalPlaces: -1, isNumeric: true }, 
     { fieldName: 'rev_kwh_ln_3',           startPos: 160, endPos: 175, decode: true, decimalPlaces: -1, isNumeric: true }, 
@@ -84,6 +84,7 @@ const ekmdecoder = {
     { fieldName: 'state_inputs',           startPos: 454, endPos: 455, decode: true,                   isNumeric: true },
     { fieldName: 'state_watts_dir',        startPos: 456, endPos: 457, decode: true,                   isNumeric: true },
     { fieldName: 'state_out',              startPos: 458, endPos: 459, decode: true,                   isNumeric: true },
+    { fieldName: 'kwh_scale',              startPos: 460, endPos: 461, decode: true,                   isNumeric: true },
   //  { fieldName: 'reserved_a',             startPos: 462, endPos: 465, decode: false                                   },
     { fieldName: 'meter_time',             startPos: 466, endPos: 493, decode: true,                                   }
   //  { fieldName: 'reserved_b',             startPos: 494, endPos: 505, decode: false                                   },
@@ -94,10 +95,10 @@ const ekmdecoder = {
   //  { fieldName: 'model',                 startPos:   2, endPos:   5, isHexNumber: true },
   //  { fieldName: 'firmware',              startPos:   6, endPos:   7, isHexNumber: true },
   //  { fieldName: 'meter_address',         startPos:   8, endPos:  31, decode: true },
-  //  { fieldName: 'kwh_tariff_1',          startPos:  32, endPos:  47, decode: true, decimalPlaces: 1, isNumeric: true },
-  //  { fieldName: 'kwh_tariff_2',          startPos:  48, endPos:  63, decode: true, decimalPlaces: 1, isNumeric: true },
-  //  { fieldName: 'kwh_tariff_3',          startPos:  64, endPos:  79, decode: true, decimalPlaces: 1, isNumeric: true },
-  //  { fieldName: 'kwh_tariff_4',          startPos:  80, endPos:  95, decode: true, decimalPlaces: 1, isNumeric: true },
+    { fieldName: 'kwh_tariff_1',          startPos:  32, endPos:  47, decode: true, decimalPlaces: 1, isNumeric: true },
+    { fieldName: 'kwh_tariff_2',          startPos:  48, endPos:  63, decode: true, decimalPlaces: 1, isNumeric: true },
+    { fieldName: 'kwh_tariff_3',          startPos:  64, endPos:  79, decode: true, decimalPlaces: 1, isNumeric: true },
+    { fieldName: 'kwh_tariff_4',          startPos:  80, endPos:  95, decode: true, decimalPlaces: 1, isNumeric: true },
     { fieldName: 'rev_kwh_tariff_1',      startPos:  96, endPos: 111, decode: true, decimalPlaces: -1, isNumeric: true },
     { fieldName: 'rev_kwh_tariff_2',      startPos: 112, endPos: 127, decode: true, decimalPlaces: -1, isNumeric: true },
     { fieldName: 'rev_kwh_tariff_3',      startPos: 128, endPos: 143, decode: true, decimalPlaces: -1, isNumeric: true },
@@ -112,9 +113,9 @@ const ekmdecoder = {
   //  { fieldName: 'rms_watts_ln_2',        startPos: 228, endPos: 241, decode: true,                   isNumeric: true },
   //  { fieldName: 'rms_watts_ln_3',        startPos: 242, endPos: 255, decode: true,                   isNumeric: true },
   //  { fieldName: 'rms_watts_tot',         startPos: 256, endPos: 269, decode: true,                   isNumeric: true },
-    { fieldName: 'cos_theta_ln_1',        startPos: 270, endPos: 277, decode: true, decimalPlaces: 2                  },
-    { fieldName: 'cos_theta_ln_2',        startPos: 278, endPos: 285, decode: true, decimalPlaces: 2                  },
-    { fieldName: 'cos_theta_ln_3',        startPos: 286, endPos: 293, decode: true, decimalPlaces: 2                  },
+    { fieldName: 'cos_theta_ln_1',        startPos: 272, endPos: 277, decode: true, decimalPlaces: 2, isNumeric: true },
+    { fieldName: 'cos_theta_ln_2',        startPos: 280, endPos: 285, decode: true, decimalPlaces: 2, isNumeric: true },
+    { fieldName: 'cos_theta_ln_3',        startPos: 288, endPos: 293, decode: true, decimalPlaces: 2, isNumeric: true },
     { fieldName: 'rms_watts_max_demand',  startPos: 294, endPos: 309, decode: true, decimalPlaces: 1, isNumeric: true, divisor: 1},
     { fieldName: 'max_demand_period',     startPos: 310, endPos: 311, decode: true,                   isNumeric: true },
     { fieldName: 'pulse_ratio_1',         startPos: 312, endPos: 319, decode: true,                   isNumeric: true },
@@ -129,15 +130,103 @@ const ekmdecoder = {
   //  { fieldName: 'end',                   startPos: 498, endPos: 505, decode: false }
   ],
 
-  decodeV3Message: (msgPayload) => {
-    return ekmdecoder.hex2Obj(msgPayload, ekmdecoder.subMeterV3Mapping)
+  haystackMapping: {
+    id: { fields: ['meter_address'] },
+    volt_A: { fields: ['rms_volts_ln_1'] },
+    volt_B: { fields: ['rms_volts_ln_2'] },
+    volt_C: { fields: ['rms_volts_ln_3'] },
+    current_A: { fields: ['amps_ln_1'] },
+    current_B: { fields: ['amps_ln_2'] },
+    current_C: { fields: ['amps_ln_3'] },
+    power_A: { fields: ['rms_watts_ln_1'], transform: val => val / 1000 },
+    power_B: { fields: ['rms_watts_ln_2'], transform: val => val / 1000 },
+    power_C: { fields: ['rms_watts_ln_3'], transform: val => val / 1000 },
+    reactive_power_A: { fields: ['reactive_pwr_ln_1'], transform: val => val / 1000 },
+    reactive_power_B: { fields: ['reactive_pwr_ln_2'], transform: val => val / 1000 },
+    reactive_power_C: { fields: ['reactive_pwr_ln_3'], transform: val => val / 1000 },
+    pf_A: { fields: ['cos_theta_ln_1'] },
+    pf_B: { fields: ['cos_theta_ln_2'] },
+    pf_C: { fields: ['cos_theta_ln_3'] },
+    power: { fields: ['rms_watts_tot'], transform: val => val / 1000 },
+    power_reactive: { fields: ['reactive_pwr_tot'], transform: val => val / 1000 },
+    state_current_dir: { fields: ['state_watts_dir'] },
+    freq: { fields: ['line_freq'] },
+    power_max: { fields: ['max_demand', 'rms_watts_max_demand'], transform: val => val / 1000 },
+    power_max_period: { fields: ['max_demand_period'] },
+    power_max_auto_reset: { fields: ['auto_reset_max_demand'] },
+    energy_A: { fields: ['kwh_ln_1'] },
+    energy_B: { fields: ['kwh_ln_2'] },
+    energy_C: { fields: ['kwh_ln_3'] },
+    energy: { fields: ['kwh_tot'] },
+    power_reactive_h: { fields: ['reactive_energy_tot'] },
+    energy_tariff_1: { fields: ['kwh_tariff_1'] },
+    energy_tariff_2: { fields: ['kwh_tariff_2'] },
+    energy_tariff_3: { fields: ['kwh_tariff_3'] },
+    energy_tariff_4: { fields: ['kwh_tariff_4'] },
+    energy_export_A: { fields: ['rev_kwh_ln_1'] },
+    energy_export_B: { fields: ['rev_kwh_ln_2'] },
+    energy_export_C: { fields: ['rev_kwh_ln_3'] },
+    energy_export: { fields: ['rev_kwh_tot'] },
+    energy_export_tariff_1: { fields: ['rev_kwh_tariff_1'] },
+    energy_export_tariff_2: { fields: ['rev_kwh_tariff_2'] },
+    energy_export_tariff_3: { fields: ['rev_kwh_tariff_3'] },
+    energy_export_tariff_4: { fields: ['rev_kwh_tariff_4'] },
+    energy_resettable: { fields: ['resettable_kwh_tot'] },
+    energy_export_resettable: { fields: ['resettable_rev_kwh_tot'] },
+    state_pulse_inputs: { fields: ['state_inputs'] },
+    state_out_cmd: { fields: ['state_out'] },
+    pulse_hisTotalized_1: { fields: ['pulse_cnt_1'] },
+    pulse_hisTotalized_2: { fields: ['pulse_cnt_2'] },
+    pulse_hisTotalized_3: { fields: ['pulse_cnt_3'] },
+    pulse_ratio_1: { fields: ['pulse_ratio_1'] },
+    pulse_ratio_2: { fields: ['pulse_ratio_2'] },
+    pulse_ratio_3: { fields: ['pulse_ratio_3'] },
+    pulse_output_ratio: { fields: ['pulse_output_ratio'] },
+    sensor_ct_ratio: { fields: ['ct_ratio'] },
+    decimal: { fields: ['kwh_scale'] },
+    meter_time: { fields: ['meter_time'], transform: (val) => {
+      if (! val || val.length !== 14) { 
+        return
+      }
+
+      // ISO 8601 date, EKM uses 2 digit years so let's get the
+      // current UTC century's first two digits...
+      return `${new Date().toUTCString().substring(12, 14)}${val.substring(0, 2)}-${val.substring(2, 4)}-${val.substring(4, 6)}T${val.substring(8, 10)}:${val.substring(10, 12)}:${val.substring(12)}.000Z`
+    }}
   },
 
-  decodeV4Message: (msgAPayload, msgBPayload) => {
+  decodeV3Message: (msgPayload, haystack) => {
+    const obj = ekmdecoder.hex2Obj(msgPayload, ekmdecoder.subMeterV3Mapping)
+
+    return (haystack ? ekmdecoder.toHaystack(obj) : obj)
+  },
+
+  decodeV4Message: (msgAPayload, msgBPayload, haystack) => {
     let obj = ekmdecoder.hex2Obj(msgAPayload, ekmdecoder.subMeterV4aMapping)
     Object.assign(obj, ekmdecoder.hex2Obj(msgBPayload, ekmdecoder.subMeterV4bMapping, obj.kwh_scale))
 
-    return obj
+    return (haystack ? ekmdecoder.toHaystack(obj) : obj)
+  },
+
+  toHaystack: (obj) => {
+    const haystackObj = {}
+
+    for (let key of Object.keys(ekmdecoder.haystackMapping)) {
+      const candidateKeys = ekmdecoder.haystackMapping[key].fields
+
+      // Default to null if we don't find a value.
+      haystackObj[key] = null
+
+      for (let candidateKey of candidateKeys) {
+        if (obj.hasOwnProperty(candidateKey)) {
+          const transform = ekmdecoder.haystackMapping[key].transform
+          haystackObj[key] = transform ? transform(obj[candidateKey]) : obj[candidateKey]
+          break
+        }
+      }
+    }
+
+    return haystackObj
   },
 
   hex2Obj: (h, mapping, kwhScale) => {

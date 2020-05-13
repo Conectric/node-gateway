@@ -1,8 +1,11 @@
 const gateway = require('conectric-usb-gateway-beta')
 const request = require('request')
+const moment = require('moment')
 const Joi = require('@hapi/joi')
 const ekmdecoder = require('./ekmdecoder')
 const clientImpl = require('./clientimpl')
+
+const METER_MESSAGE_TYPE = 'meter'
 
 let ekmData = {
   dataChunksA: [],
@@ -53,8 +56,9 @@ const verifyConfig = () => {
     useFahrenheitTemps: Joi.boolean().required(),
     sendStatusMessages: Joi.boolean().required(),
     sendEventCount: Joi.boolean().required(),
-    sendRawData: Joi.boolean().required(),
-    sendHopData:  Joi.boolean().required()
+    sendRawData: Joi.boolean().optional(),
+    sendHopData:  Joi.boolean().required(),
+    useHaystack: Joi.boolean().required()
   }).required().options({
     allowUnknown: true
   }))
@@ -113,13 +117,79 @@ const verifyMeterMappings = () => {
   }
 }
 
+const toHaystack = (message) => {
+  const haystackMsg = {
+    connection: 'conectric',
+    networkRef: 'conectric',
+    device1Ref: message.gatewayId,
+    device2Ref: null,
+    id: message.sensorId,
+    ...message
+  }
+
+  // Format the timestamp.
+  const m = (config.useMillisecondTimestamps ? moment(message.timestamp) : moment.unix(message.timestamp))
+
+  haystackMsg.t = m.toISOString()
+
+  switch (message.type) {
+    case 'echoStatus':
+      haystackMsg.payload.battery = null
+      break
+      
+    case 'motion':
+      haystackMsg.payload.occupancyIndicator = message.payload.motion
+      delete haystackMsg.payload.motion
+      break
+
+    case 'motionStatus': 
+      haystackMsg.payload.occupancyIndicator = false
+      break
+
+    case 'pulseStatus':
+      haystackMsg.payload.pulse = false
+      break
+
+    case 'tempHumidityLight':
+      haystackMsg.payload.temp = message.payload.temperature
+      delete haystackMsg.payload.temperature
+      haystackMsg.payload.unit = message.payload.temperatureUnit
+      delete haystackMsg.payload.temperatureUnit
+      haystackMsg.payload.lightLevel = message.payload.lux
+      delete haystackMsg.payload.lux
+      break
+
+    case 'tempHumidity':
+      haystackMsg.payload.temp = message.payload.temperature
+      delete haystackMsg.payload.temperature
+      haystackMsg.payload.unit = message.payload.temperatureUnit
+      delete haystackMsg.payload.temperatureUnit
+      break
+
+    case 'tempHumidityAdc':
+      haystackMsg.payload.temp = message.payload.temperature
+      delete haystackMsg.payload.temperature
+      haystackMsg.payload.unit = message.payload.temperatureUnit
+      delete haystackMsg.payload.temperatureUnit
+      break
+  }
+
+  return haystackMsg
+}
+
 const sendToEndpoints = (message) => {
-  // TODO change this to send to both options if configured...
-  // And avoid HTTP option if disabled...
-  const reformattedPayload = clientImpl.formatPayload({
+  let interimMessage = {
     gatewayId: gateway.macAddress,
     ...message
-  })
+  }
+
+  // Only convert messages to Haystack if enabled, don't convert
+  // meter messages as ekmdecoder already did this for these.
+  if (config.useHaystack && message.type !== METER_MESSAGE_TYPE) {
+    interimMessage = toHaystack(interimMessage)
+  }
+
+  const reformattedPayload = clientImpl.formatPayload(interimMessage)
 
   if (httpEnabled) {
     sendToHTTPEndpoint(reformattedPayload)
@@ -128,10 +198,11 @@ const sendToEndpoints = (message) => {
   if (goIotEnabled) {
     try {
       goiot.sendToUnixSocket(reformattedPayload);
+      console.log(reformattedPayload)
       console.log('Sent message to go-iot.')
     } catch (err) {
-      console.log('Error sending to go-iot:')
-      console.log(err)
+      console.error('Error sending to go-iot:')
+      console.error(err)
     }
   }
 }
@@ -330,8 +401,6 @@ const onSensorMessage = sensorMessage => {
     }
   }
 
-  console.log(sensorMessage)
-
   try {
     if (sensorMessage.type === 'rs485ChunkEnvelopeResponse') {
       // Stop the timeout.
@@ -420,17 +489,33 @@ const onSensorMessage = sensorMessage => {
 
             if (meter.version === 3) {
               // All done here for a v3 meter.
-              sendToEndpoints({
-                type: 'meter',
+              let msg = {
+                type: METER_MESSAGE_TYPE,
                 meterModel: 'ekm3',
                 timestamp: sensorMessage.timestamp,
                 sensorId: sensorMessage.sensorId,
-                sequenceNumber: sensorMessage.sequenceNumber,
-                payload: {
-                  battery: sensorMessage.payload.battery,
-                  ...ekmdecoder.decodeV3Message(ekmData.dataChunksA.join(''))
-                }
-              })
+                sequenceNumber: sensorMessage.sequenceNumber,              
+              }
+
+              let payload = {
+                battery: (config.useHaystack ? null : sensorMessage.payload.battery),
+                ...ekmdecoder.decodeV3Message(ekmData.dataChunksA.join(''), config.useHaystack)
+              }  
+
+              if (config.useHaystack) {
+                msg.connection = 'ekm'
+                msg.networkRef = 'conectric'
+                msg.device1Ref = gateway.macAddress
+                msg.device2Ref = sensorMessage.sensorId
+                msg.equip = 'elec_meter'
+                msg.t = payload.meter_time
+                msg.id = payload.id
+                delete payload.id
+              }
+
+              msg.payload = payload
+
+              sendToEndpoints(msg)
       
               // Set off the reading process again.
               startNextMeterRequest()
@@ -447,17 +532,33 @@ const onSensorMessage = sensorMessage => {
           } else {
             console.log('Meter message B CRC check passed.')
             // We now have the complete meter reading.
-            sendToEndpoints({
-              type: 'meter',
+            let msg = {
+              type: METER_MESSAGE_TYPE,
               meterModel: 'ekm4',
               timestamp: sensorMessage.timestamp,
               sensorId: sensorMessage.sensorId,
               sequenceNumber: sensorMessage.sequenceNumber,
-              payload: {
-                battery: sensorMessage.payload.battery,
-                ...ekmdecoder.decodeV4Message(ekmData.dataChunksA.join(''), ekmData.dataChunksB.join(''))
-              }
-            })
+            }
+
+            let payload = {
+              battery: (config.useHaystack ? null : sensorMessage.payload.battery),
+              ...ekmdecoder.decodeV4Message(ekmData.dataChunksA.join(''), ekmData.dataChunksB.join(''), config.useHaystack)
+            }
+
+            if (config.useHaystack) {
+              msg.connection = 'ekm'
+              msg.networkRef = 'conectric'
+              msg.device1Ref = gateway.macAddress
+              msg.device2Ref = sensorMessage.sensorId
+              msg.equip = 'elec_meter'
+              msg.t = payload.meter_time
+              msg.id = payload.id
+              delete payload.id
+            }
+
+            msg.payload = payload
+
+            sendToEndpoints(msg)
     
             // Set off the reading process again.
             startNextMeterRequest()
@@ -502,6 +603,12 @@ const goIotEnabled = isEndpointEnabled('go-iot')
 
 console.log(`HTTP is ${httpEnabled ? 'enabled' : 'disabled'}.`)
 console.log(`go-iot is ${goIotEnabled ? 'enabled' : 'disabled'}.`)
+console.log(`Haystack message format is ${config.useHaystack ? 'enabled' : 'disabled'}.`)
+
+if (goIotEnabled && ! config.useHaystack) {
+  console.error(`When go-iot is enabled, you must set 'useHaystack' to true in config.json!`)
+  process.exit(1)
+}
 
 gateway.runGateway({
   onSensorMessage,
@@ -509,8 +616,11 @@ gateway.runGateway({
   useTrackingId: true,
   useFahrenheitTemps: config.useFahrenheitTemps,
   sendStatusMessages: config.sendStatusMessages,
-  sendEventCount: config.sendEventCount,
+  // Require event counts in Haystack mode!
+  sendEventCount: config.sendEventCount || config.useHaystack,
   sendRawData: config.sendRawData,
   sendHopData: config.sendHopData,
-  useMillisecondTimestamps: config.useMillisecondTimestamps
+  useMillisecondTimestamps: config.useMillisecondTimestamps,
+  // Enable raw lux in Haystack mode!
+  sendRawLux: config.useHaystack
 })

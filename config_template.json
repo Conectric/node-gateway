@@ -4,8 +4,6 @@
         "enabled": true
     },
     "go-iot": {
-        "id": "DINGO-Conectric-Unix-Socket-Client",
-        "socketRoot": "/dev/shm/",
         "enabled": false
     },
     "requestTimeout": 2,
@@ -15,6 +13,6 @@
     "useFahrenheitTemps": true,
     "sendStatusMessages": true,
     "sendEventCount": true,
-    "sendRawData": true,
-    "sendHopData": true
+    "sendHopData": true,
+    "useHaystack": false
 }

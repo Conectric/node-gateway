@@ -14,6 +14,6 @@
     "useFahrenheitTemps": true,
     "sendStatusMessages": true,
     "sendEventCount": true,
-    "sendRawData": true,
-    "sendHopData": true
+    "sendHopData": true,
+    "useHaystack": true
 }

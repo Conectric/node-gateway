@@ -28,9 +28,7 @@ const buildAPIHeaders = (config, payload) => {
   // Example:
   // { 'x-some-header-name': 'secretpassword' }
 
-  return {
-    'x-some-secret-header': config.http.apiToken
-  }
+  return {}
 }
 
 const getAPIVerb = () => {
