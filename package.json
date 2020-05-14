@@ -1,6 +1,6 @@
 {
   "name": "node-gateway",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Conectric Mesh Gateway for Node.js",
   "main": "server.js",
   "scripts": {

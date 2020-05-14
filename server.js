@@ -150,6 +150,10 @@ const toHaystack = (message) => {
       haystackMsg.payload.pulse = false
       break
 
+    case 'rs485Status':
+      haystackMsg.payload.battery = null
+      break
+
     case 'tempHumidityLight':
       haystackMsg.payload.temp = message.payload.temperature
       delete haystackMsg.payload.temperature

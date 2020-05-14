@@ -312,7 +312,7 @@ Note: `pulse` will always be `false`.
   "gatewayId": "00124b00051422cd",
   "type": "rs485Status",
   "payload": { 
-    "battery": 3.2, 
+    "battery": null, 
     "eventCount": 922239 
   },
   "sensorId": "1d0c",
