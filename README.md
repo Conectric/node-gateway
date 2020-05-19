@@ -183,8 +183,8 @@ Note: `battery` will always be `null` as devices are not running from batteries.
   "payload": { 
     "battery": 3.1,
     "moisture": false,
-    "temperature": 80.2,
-    "temperatureUnit": "F",
+    "temp": 80.2,
+    "unit": "F",
     "humidity": 48.32,
     "eventCount": 15 
   },

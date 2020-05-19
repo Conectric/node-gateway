@@ -136,7 +136,14 @@ const toHaystack = (message) => {
     case 'echoStatus':
       haystackMsg.payload.battery = null
       break
-      
+
+    case 'moistureStatus':
+      haystackMsg.payload.temp = message.payload.temperature
+      delete haystackMsg.payload.temperature
+      haystackMsg.payload.unit = message.payload.temperatureUnit
+      delete haystackMsg.payload.temperatureUnit
+      break
+
     case 'motion':
       haystackMsg.payload.occupancyIndicator = message.payload.motion
       delete haystackMsg.payload.motion
