@@ -741,7 +741,7 @@ EKM v3 Meter:
     "freq": null,
     "power_max": 6.635,
     "power_max_period": 1,
-    "power_mac_auto_reset": null,
+    "power_max_auto_reset": null,
     "energy_A": null,
     "energy_B": null,
     "energy_C": null,
