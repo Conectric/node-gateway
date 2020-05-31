@@ -40,7 +40,8 @@ const verifyConfig = () => {
   const validationResult = Joi.validate(config, Joi.object().keys({
     http: Joi.object().keys({
       apiUrl: Joi.string().uri().required(),
-      enabled: Joi.boolean().required()
+      enabled: Joi.boolean().required(),
+      successCodes: Joi.array().items(Joi.number().integer()).required()
     }).optional().options({
       allowUnknown: true
     }),
@@ -245,7 +246,7 @@ const sendToHTTPEndpoint = (message) => {
         console.error('Error sending to API:')
         console.error(err)
       } else {
-        if (res.statusCode === 200) {
+        if (config.http.successCodes.includes(res.statusCode)) {
           console.log('Sent message successfully.')
         } else {
           console.error(`Error sending to API, statusCode: ${res.statusCode}`)

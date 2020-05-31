@@ -2,7 +2,8 @@
     "http": {
         "apiUrl": "https://URL_HERE",
         "apiToken": "test",
-        "enabled": true
+        "enabled": true,
+        "successCodes": [ 200, 201, 202, 204 ]
     },
     "go-iot": {
         "enabled": false

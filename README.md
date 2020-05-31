@@ -36,7 +36,8 @@ Contains configurable parameters.
 {
     "http": {
         "apiUrl": "<API URL to post data to> e.g. https://mydomain.com/api/endpoint",
-        "enabled": true
+        "enabled": true,
+        "successCodes": [ 200, 201, 202, 204 ]
     },
     "go-iot": {
         "enabled": false
@@ -54,6 +55,8 @@ Contains configurable parameters.
 ```
 
 You may also add your own extra parameters to the config file.  These can then be referenced in your customized `clientimpl.js` file.
+
+For `http`, `successCodes` is an array of HTTP status codes that should be considered success responses from the server.
 
 When `go-iot` is enabled, you **must** set `useHaystack` to `true`.  Failure to do this will result in the gateway logging an error message and quitting on startup.
 
