@@ -356,7 +356,7 @@ const sendMeterRequest = (meterSerialNumberHex, destination) => {
     moveToNextMeter()
     const meter = getCurrentMeter()
     sendMeterRequest(meter.hexSerialNumber, meter.rs485HubId)
-  }, config.requestTimeout)
+  }, config.readingInterval)
 }
 
 const startNextMeterRequest = () => {
