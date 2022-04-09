@@ -26,7 +26,7 @@
     "@goiot/goiot": "^1.0.4",
     "@hapi/joi": "^15.1.0",
     "conectric-usb-gateway-beta": "^0.0.15",
-    "moment": "^2.24.0",
+    "moment": "^2.29.2",
     "node-ipc": "^9.1.1",
     "request": "^2.88.0",
     "round-to": "^4.0.0"
